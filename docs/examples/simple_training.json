@@ -1,0 +1,64 @@
+{
+    "tasks": [
+        {
+            "task": "load_dataset",
+            "inputs": {
+                "path": "$env.TRAIN_DATASET_FILEPATH"
+            }
+        },
+        {
+            "task": "load_dataset",
+            "inputs": {
+                "path": "$env.VAL_DATASET_FILEPATH"
+            }
+        },
+        {
+            "task": "create_timm_model",
+            "config": {
+                "name": "resnet50",
+                "num_classes": "$output.load_dataset.num_classes"
+            }
+        },
+        {
+            "task": "load_weights",
+            "inputs": {
+                "model": "$output.create_timm_model.model"
+            },
+            "config": {
+                "path": "$env.WEIGHTS_FILEPATH"
+            }
+        },
+        {
+            "task": "train",
+            "inputs": {
+                "train_dataset": "$output.load_dataset.dataset",
+                "val_dataset": "$output.load_dataset@2.dataset",
+                "model": "$output.load_weights.model"
+            },
+            "config": {
+                "num_epoch": 100
+            }
+        },
+        {
+            "task": "evaluate",
+            "inputs": {
+                "model": "$output.train.model",
+                "dataset": "$output.load_dataset@2.dataset"
+            }
+        },
+        {
+            "task": "save_pytorch",
+            "inputs": {
+                "input": "$output.train.model",
+                "output_path": "model.pth"
+            }
+        },
+        {
+            "task": "export_onnx",
+            "inputs": {
+                "model": "$output.train.model",
+                "output_path": "model.onnx"
+            }
+        }
+    ]
+}

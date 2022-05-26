@@ -1,0 +1,16 @@
+{
+    "tasks": [
+        {
+            "task": "load_dataset",
+            "inputs": {
+                "path": "$env.DATASET_FILEPATH"
+            }
+        },
+        {
+            "task": "dump_dataset_stats",
+            "inputs": {
+                "dataset": "$output.load_dataset.dataset"
+            }
+        }
+    ]
+}
