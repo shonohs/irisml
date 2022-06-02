@@ -14,6 +14,7 @@ def main():
     job_description = json.loads(args.job_filepath.read_text())
     job = Job.from_dict(job_description)
     print(job)
+
     print("Loading task modules...")
     job.load_modules()
     print("Success!")

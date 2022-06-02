@@ -10,7 +10,7 @@ class JobRunner:
         self._job = Job.from_dict(job_dict)
         self._env_vars = env_vars
 
-    def run(self):
+    def run(self, dry_run=False):
         logger.info("Loading task modules.")
         self._job.load_modules()
 
@@ -21,7 +21,7 @@ class JobRunner:
         for task in self._job.tasks:
             logger.debug(f"Running a task: {task}")
             try:
-                task.execute(context)
+                task.execute(context, dry_run)
             except Exception as e:
                 logger.exception(f"Failed to run a task {task}: {e}")
                 raise
