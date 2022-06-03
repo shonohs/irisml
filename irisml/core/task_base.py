@@ -2,19 +2,24 @@ import dataclasses
 
 
 class TaskBase:
-    VERSION = '0.0.0'
+    VERSION = '0.0.0'  # Version number of the task. Each task must overwrite this variable.
 
     @dataclasses.dataclass(frozen=True)
     class Config:
+        """Configuration for the task. Must be overwritten if the task requires a config"""
         pass
 
     @dataclasses.dataclass(frozen=True)
     class Inputs:
+        """Inputs type. Must be overwritten if the task requires inputs."""
         pass
 
     @dataclasses.dataclass(frozen=True)
     class Outputs:
+        """Outputs type. Must be overwritten if the task has outputs."""
         pass
+
+    # TODO: Child tasks?
 
     def __init__(self, config: Config):
         self._config = config
@@ -23,4 +28,5 @@ class TaskBase:
         return self.execute(inputs)
 
     def execute(self, inputs: Inputs) -> Outputs:
+        """This method must be overwritten by the task."""
         raise NotImplementedError
