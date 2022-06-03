@@ -1,8 +1,12 @@
 import dataclasses
 import importlib
+import logging
 import typing
 from .task_base import TaskBase
-from .variable import replace_variables
+from .variable import replace_variables, Variable
+
+
+logger = logging.getLogger(__name__)
 
 
 class Task:
@@ -21,7 +25,7 @@ class Task:
         self._inputs = inputs
         self._config_dict = config_dict
         self._name = name or self._task_name
-        self._task = None
+        self._task_class = None
 
     @property
     def name(self):
@@ -36,18 +40,26 @@ class Task:
         return self._task_name
 
     def execute(self, context, dry_run=False):
-        if not self._task:
+        if not self._task_class:
             raise RuntimeError("load_module() must be called before executing the task.")
 
+        config = self._load_config(self._task_class.Config, self._config_dict)
+        resolved_config = context.resolve(config)
+
         resolved_inputs = context.resolve(self._inputs)
-        inputs = self._task.Inputs(**resolved_inputs)
+        inputs = self._task_class.Inputs(**resolved_inputs)
 
+        logger.debug(f"Instantiating the task module. config={resolved_config}")
+        task = self._task_class(resolved_config)
         if not dry_run:
-            outputs = self._task(inputs)
+            outputs = task(inputs)
+            if outputs is None:
+                logger.warning(f"{self} returned None output.")
+                outputs = self._task_class.Outputs()
         else:
-            outputs = self._task.Outputs()
+            outputs = self._task_class.Outputs()
 
-        if not isinstance(outputs, self._task.Outputs):
+        if not isinstance(outputs, self._task_class.Outputs):
             raise RuntimeError(f"Task {self._task_name} returned invalid outputs: {outputs}")
 
         context.add_outputs(self.name, outputs)
@@ -62,28 +74,29 @@ class Task:
         task_class = getattr(task_module, 'Task')
         if not issubclass(task_class, TaskBase):
             raise RuntimeError(f"Failed to load {self.task_name}. Please make sure the Task class inherits the TaskBase class.")
+        self._task_class = task_class
 
-        config = self._load_config(task_class.Config, self._config_dict)
-        self._task = task_class(config)
+        # Verify that the config is loadable.
+        self._load_config(task_class.Config, self._config_dict)
         self.validate()
 
     def validate(self):
         """Check if the task satisfies the rules."""
-        if not self._task:
+        if not self._task_class:
             raise RuntimeError("load_module() must be called first.")
 
-        if not dataclasses.is_dataclass(self._task.Config):
-            raise RuntimeError(f"Config class must be a dataclass. Actual: {type(self._task.Config)}")
-        if not dataclasses.is_dataclass(self._task.Inputs):
-            raise RuntimeError(f"Inputs class must be a dataclass. Actual: {type(self._task.Inputs)}")
-        if not dataclasses.is_dataclass(self._task.Outputs):
-            raise RuntimeError(f"Outputs class must be a dataclass. Actual: {type(self._task.Outputs)}")
+        if not dataclasses.is_dataclass(self._task_class.Config):
+            raise RuntimeError(f"Config class must be a dataclass. Actual: {type(self._task_class.Config)}")
+        if not dataclasses.is_dataclass(self._task_class.Inputs):
+            raise RuntimeError(f"Inputs class must be a dataclass. Actual: {type(self._task_class.Inputs)}")
+        if not dataclasses.is_dataclass(self._task_class.Outputs):
+            raise RuntimeError(f"Outputs class must be a dataclass. Actual: {type(self._task_class.Outputs)}")
 
-        for f in dataclasses.fields(self._task.Inputs):
+        for f in dataclasses.fields(self._task_class.Inputs):
             if dataclasses.is_dataclass(f.type):
                 raise RuntimeError(f"Nested input dataclass is not allowed: {f.name}")
 
-        for f in dataclasses.fields(self._task.Outputs):
+        for f in dataclasses.fields(self._task_class.Outputs):
             if f.default == dataclasses.MISSING and f.default_factory == dataclasses.MISSING:
                 raise RuntimeError(f"All output fields must have a default value or a default factory: {f.name}")
             if dataclasses.is_dataclass(f.type):
@@ -103,6 +116,10 @@ class Task:
                 for field in dataclasses.fields(type_class):
                     if field.name in value:
                         c[field.name] = load(field.type, value[field.name])
+
+                unused_keys = set(value.keys()) - set(c.keys())
+                if unused_keys:
+                    raise ValueError(f"There are redundant fields: {unused_keys}")
                 return type_class(**c)
             elif origin is list:
                 return [load(args[0], v) for v in value]
@@ -115,6 +132,9 @@ class Task:
                 else:
                     raise ValueError(f"Union type is not allowed: {field.type} name: {field.name} value: {value[field.name]}")
             elif origin is None:
+                if isinstance(value, Variable):
+                    value.expected_type = type_class
+                    return value
                 return type_class(value)
             else:
                 raise ValueError(f"Config data type is not supported: {type_class} value: {value}")

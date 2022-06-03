@@ -17,6 +17,15 @@ def replace_variables(value):
 class Variable:
     def __init__(self, name):
         self._var_str = name
+        self._expected_type = str
+
+    @property
+    def expected_type(self):
+        return self._expected_type
+
+    @expected_type.setter
+    def expected_type(self, value):
+        self._expected_type = value
 
     def __eq__(self, other):
         return type(self) is type(other) and self._var_str == other._var_str
@@ -38,9 +47,9 @@ class EnvironmentVariable(Variable):
         self._name = parts[1]
 
     def resolve(self, context):
-        if self._name not in context.env:
+        if self._name not in context.envs:
             raise ValueError(f"Environment variable {self._name} is not found.")
-        return context.env[self._name]
+        return self._expected_type(context.envs[self._name])
 
 
 class OutputVariable(Variable):

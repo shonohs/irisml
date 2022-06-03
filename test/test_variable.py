@@ -11,7 +11,7 @@ class TestEnvironmentVariable(unittest.TestCase):
                 EnvironmentVariable(name)
 
     def test_resolve(self):
-        context = MagicMock(env={'CORRECT_VAR': '42'})
+        context = MagicMock(envs={'CORRECT_VAR': '42'})
         v = EnvironmentVariable('$env.CORRECT_VAR')
         self.assertEqual(v.resolve(context), '42')
         v = EnvironmentVariable('$env.VAR_NOT_FOUND')

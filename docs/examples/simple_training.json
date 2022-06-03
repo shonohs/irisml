@@ -13,6 +13,14 @@
             }
         },
         {
+            "task": "create_torchvision_transform",
+            "config": {
+                "transforms": [
+                    "center_crop"
+                ]
+            }
+        },
+        {
             "task": "create_timm_model",
             "config": {
                 "name": "resnet50",
@@ -33,7 +41,9 @@
             "inputs": {
                 "train_dataset": "$output.load_dataset.dataset",
                 "val_dataset": "$output.load_dataset@2.dataset",
-                "model": "$output.load_weights.model"
+                "train_transform": "$output.create_torchvision_transform.transform",
+                "val_transform": "$output.create_torchvision_transform.transform",
+                "model": "$output.load_state_dict.model"
             },
             "config": {
                 "num_epoch": 100
@@ -43,21 +53,26 @@
             "task": "evaluate",
             "inputs": {
                 "model": "$output.train.model",
-                "dataset": "$output.load_dataset@2.dataset"
+                "dataset": "$output.load_dataset@2.dataset",
+                "transform": "$output.create_torchvision_transform.transform"
             }
         },
         {
             "task": "save_state_dict",
             "inputs": {
-                "input": "$output.train.model",
-                "output_path": "model.pth"
+                "model": "$output.train.model"
+            },
+            "config": {
+                "path": "model.pth"
             }
         },
         {
             "task": "export_onnx",
             "inputs": {
-                "model": "$output.train.model",
-                "output_path": "model.onnx"
+                "model": "$output.train.model"
+            },
+            "config": {
+                "path": "model.onnx"
             }
         }
     ]
