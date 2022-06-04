@@ -45,7 +45,7 @@ To show the detailed help for each task, run the following command after install
 irisml_show <task_name>
 ```
 
-## irisml-tasks (Installed by default)
+## [irisml-tasks](https://github.com/shonohs/irisml-tasks)
 - cache
 - run_parallel
 - run_sequence
