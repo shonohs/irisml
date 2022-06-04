@@ -1,4 +1,5 @@
 import dataclasses
+from irisml.core.context import Context
 
 
 class TaskBase:
@@ -19,10 +20,17 @@ class TaskBase:
         """Outputs type. Must be overwritten if the task has outputs."""
         pass
 
-    # TODO: Child tasks?
-
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, context: Context):
         self._config = config
+        self._context = context
+
+    @property
+    def config(self):
+        return self._config
+
+    @property
+    def context(self):
+        return self._context
 
     def __call__(self, inputs: Inputs) -> Outputs:
         return self.execute(inputs)

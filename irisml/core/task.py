@@ -2,6 +2,7 @@ import dataclasses
 import importlib
 import logging
 import typing
+from irisml.core import TaskDescription
 from .task_base import TaskBase
 from .variable import replace_variables, Variable
 
@@ -11,20 +12,13 @@ logger = logging.getLogger(__name__)
 
 class Task:
     """Represents a task description. It doesn't require actual task modules until load_module() is called."""
-    def __init__(self, task_name, inputs: dict, config_dict, name=None):
-        """
-        Args:
-            task_name: Module name of the task
-            inputs (dict): Input description
-            config_dict (dict): Config description
-            name (str): Optional unique name for the task.
-        """
-        assert task_name.islower()
+    def __init__(self, description: TaskDescription):
+        assert description.task.islower()
 
-        self._task_name = task_name
-        self._inputs = inputs
-        self._config_dict = config_dict
-        self._name = name or self._task_name
+        self._task_name = description.task
+        self._inputs = replace_variables(description.inputs or {})
+        self._config_dict = replace_variables(description.config or {})
+        self._name = description.name or self._task_name
         self._task_class = None
 
     @property
@@ -50,7 +44,7 @@ class Task:
         inputs = self._task_class.Inputs(**resolved_inputs)
 
         logger.debug(f"Instantiating the task module. config={resolved_config}")
-        task = self._task_class(resolved_config)
+        task = self._task_class(resolved_config, context)
         if not dry_run:
             outputs = task(inputs)
             if outputs is None:
@@ -63,6 +57,7 @@ class Task:
             raise RuntimeError(f"Task {self._task_name} returned invalid outputs: {outputs}")
 
         context.add_outputs(self.name, outputs)
+        return outputs
 
     def load_module(self):
         """Load a task module dynamically. If the module was not found, throws a RuntimeError"""
@@ -140,17 +135,6 @@ class Task:
                 raise ValueError(f"Config data type is not supported: {type_class} value: {value}")
 
         return load(config_class, config_dict)
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        task_name = data['task']
-        name = data.get('name')
-        inputs = data.get('inputs', {})
-        config = data.get('config', {})
-
-        inputs = replace_variables(inputs)
-        config = replace_variables(config)
-        return cls(task_name, inputs, config, name=name)
 
     def __str__(self):
         return f"Task {self.task_name} (name: {self.name})"

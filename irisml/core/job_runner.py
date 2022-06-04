@@ -1,4 +1,5 @@
 import logging
+from irisml.core import JobDescription
 from irisml.core.context import Context
 from irisml.core.job import Job
 
@@ -7,7 +8,8 @@ logger = logging.getLogger(__name__)
 
 class JobRunner:
     def __init__(self, job_dict, env_vars: dict):
-        self._job = Job.from_dict(job_dict)
+        job_description = JobDescription.from_dict(job_dict)
+        self._job = Job(job_description)
         self._env_vars = env_vars
 
     def run(self, dry_run=False):

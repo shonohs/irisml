@@ -2,9 +2,11 @@
 import argparse
 import json
 import pathlib
+from irisml.core import JobDescription
 from irisml.core.job import Job
 
 
+# TODO: Do we need this command? Maybe dryrun is enough?
 def main():
     parser = argparse.ArgumentParser(description="Check a job description")
     parser.add_argument('job_filepath', type=pathlib.Path)
@@ -12,7 +14,7 @@ def main():
     args = parser.parse_args()
 
     job_description = json.loads(args.job_filepath.read_text())
-    job = Job.from_dict(job_description)
+    job = Job(JobDescription.from_dict(job_description))
     print(job)
 
     print("Loading task modules...")

@@ -2,7 +2,7 @@ import dataclasses
 import sys
 import unittest
 from typing import Dict, List, Optional
-from irisml.core import TaskBase
+from irisml.core import TaskBase, TaskDescription
 from irisml.core.task import Task
 
 
@@ -43,11 +43,11 @@ class TestTask(unittest.TestCase):
 
         with unittest.mock.patch.dict(sys.modules):
             sys.modules['irisml.tasks.custom_task'] = CustomTask
-            task = Task.from_dict({'task': 'custom_task'})
+            task = Task(TaskDescription.from_dict({'task': 'custom_task'}))
             with self.assertRaises(RuntimeError):
                 task.load_module()
 
             CustomTask.Task.Outputs = EmptyClass
-            task = Task.from_dict({'task': 'custom_task'})
+            task = Task(TaskDescription.from_dict({'task': 'custom_task'}))
             with self.assertRaises(RuntimeError):
                 task.load_module()
