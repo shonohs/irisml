@@ -1,0 +1,86 @@
+{
+    "tasks": [
+        {
+            "task": "load_torchvision_dataset",
+            "config": {
+                "name": "MNIST"
+            }
+        },
+        {
+            "task": "get_dataset_subset",
+            "inputs": {
+                "dataset": "$output.load_torchvision_dataset.train_dataset"
+            },
+            "config": {
+                "num_images": 20
+            }
+        },
+        {
+            "task": "create_torchvision_transform",
+            "config": {
+                "transforms": [
+                    "RandomResizedCrop(224)",
+                    "ColorJitter(0.2, 0.2, 0.2, 0.2)",
+                    "RandomHorizontalFlip"
+                ]
+            }
+        },
+        {
+            "task": "create_torchvision_model",
+            "config": {
+                "name": "mobilenet_v2",
+                "num_classes": "$output.load_torchvision_dataset.num_classes",
+                "pretrained": true
+            }
+        },
+        {
+            "task": "train",
+            "inputs": {
+                "train_dataset": "$output.get_dataset_subset.dataset",
+                "val_dataset": "$output.load_torchvision_dataset.val_dataset",
+                "train_transform": "$output.create_torchvision_transform.transform",
+                "val_transform": "$output.create_torchvision_transform.transform",
+                "model": "$output.create_torchvision_model.model"
+            },
+            "config": {
+                "num_epochs": 2,
+                "plugins": [
+                    "progressbar"
+                ]
+            }
+        },
+        {
+            "task": "predict_multiclass_classification",
+            "inputs": {
+                "model": "$output.train.model",
+                "dataset": "$output.get_dataset_subset.dataset",
+                "transform": "$output.create_torchvision_transform.transform"
+            }
+        },
+        {
+            "task": "evaluate_accuracy",
+            "inputs": {
+                "dataset": "$output.get_dataset_subset.dataset",
+                "predictions": "$output.predict_multiclass_classification.predictions"
+            }
+        },
+        {
+            "task": "save_state_dict",
+            "inputs": {
+                "model": "$output.train.model"
+            },
+            "config": {
+                "path": "model.pth"
+            }
+        },
+        {
+            "task": "export_onnx",
+            "inputs": {
+                "model": "$output.train.model"
+            },
+            "config": {
+                "path": "model.onnx"
+            }
+        }
+    ]
+}

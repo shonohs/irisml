@@ -16,7 +16,7 @@ class Task:
         assert description.task.islower()
 
         self._task_name = description.task
-        self._inputs = replace_variables(description.inputs or {})
+        self._inputs_dict = replace_variables(description.inputs or {})
         self._config_dict = replace_variables(description.config or {})
         self._name = description.name or self._task_name
         self._task_class = None
@@ -40,18 +40,18 @@ class Task:
         config = self._load_config(self._task_class.Config, self._config_dict)
         resolved_config = context.resolve(config)
 
-        resolved_inputs = context.resolve(self._inputs)
-        inputs = self._task_class.Inputs(**resolved_inputs)
+        inputs = self._load_inputs(self._task_class.Inputs, self._inputs_dict)
+        resolved_inputs = context.resolve(inputs)
 
         logger.debug(f"Instantiating the task module. config={resolved_config}")
         task = self._task_class(resolved_config, context)
         if not dry_run:
-            outputs = task(inputs)
+            outputs = task(resolved_inputs)
             if outputs is None:
                 logger.warning(f"{self} returned None output.")
                 outputs = self._task_class.Outputs()
         else:
-            outputs = self._task_class.Outputs()
+            outputs = task.dry_run(resolved_inputs)
 
         if not isinstance(outputs, self._task_class.Outputs):
             raise RuntimeError(f"Task {self._task_name} returned invalid outputs: {outputs}")
@@ -79,6 +79,9 @@ class Task:
         """Check if the task satisfies the rules."""
         if not self._task_class:
             raise RuntimeError("load_module() must be called first.")
+
+        if self._task_class.VERSION == '0.0.0':
+            logger.warning(f"Task {self._task_name} is version 0.0.0. Please define VERSION attribute in the Task class..")
 
         if not dataclasses.is_dataclass(self._task_class.Config):
             raise RuntimeError(f"Config class must be a dataclass. Actual: {type(self._task_class.Config)}")
@@ -135,6 +138,17 @@ class Task:
                 raise ValueError(f"Config data type is not supported: {type_class} value: {value}")
 
         return load(config_class, config_dict)
+
+    @staticmethod
+    def _load_inputs(inputs_class: dataclasses.dataclass, inputs_dict: dict):
+        c = {}
+        # Inputs doesn't have nested values.
+        for field in dataclasses.fields(inputs_class):
+            if field.name in inputs_dict:
+                if isinstance(inputs_dict[field.name], Variable):
+                    inputs_dict[field.name].expected_type = field.type
+                c[field.name] = inputs_dict[field.name]
+        return inputs_class(**c)
 
     def __str__(self):
         return f"Task {self.task_name} (name: {self.name})"

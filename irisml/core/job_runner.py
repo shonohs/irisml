@@ -1,4 +1,5 @@
 import logging
+import random
 from irisml.core import JobDescription
 from irisml.core.context import Context
 from irisml.core.job import Job
@@ -19,6 +20,10 @@ class JobRunner:
         logger.info("Running a job.")
 
         context = Context(self._env_vars)
+
+        # Initialize the random seed so that we can get deterministic results.
+        # PyTorch random generator should be taken care by each task.
+        random.seed(42)
 
         for task in self._job.tasks:
             logger.debug(f"Running a task: {task}")

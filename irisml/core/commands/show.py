@@ -3,6 +3,7 @@ import dataclasses
 import importlib
 import inspect
 import pkgutil
+from irisml.core.commands.common import configure_logger
 
 
 def _print_dataclass(data_class):
@@ -11,6 +12,7 @@ def _print_dataclass(data_class):
 
 
 def main():
+    configure_logger()
     parser = argparse.ArgumentParser(description="Show information about a task")
     parser.add_argument('task_name', nargs='?', help="If not provided, shows all available tasks on this environment.")
 

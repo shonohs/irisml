@@ -1,9 +1,11 @@
 import argparse
 from irisml.core.context import Context
+from irisml.core.commands.common import configure_logger
 from irisml.core.task import Task
 
 
 def main():
+    configure_logger()
     parser = argparse.ArgumentParser(description="Run a single task")
     parser.add_argument('task_name')
     parser.add_argument('--inputs', nargs='*')

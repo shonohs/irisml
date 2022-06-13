@@ -38,3 +38,7 @@ class TaskBase:
     def execute(self, inputs: Inputs) -> Outputs:
         """This method must be overwritten by the task."""
         raise NotImplementedError
+
+    def dry_run(self, inputs: Inputs) -> Outputs:
+        """This method will be called in dry-run mode. Task can overwrite this method."""
+        return self.Outputs()

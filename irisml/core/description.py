@@ -6,7 +6,7 @@ import typing
 @dataclasses.dataclass
 class TaskDescription:
     task: str
-    name: Optional[str] = None
+    name: Optional[str] = None  # Optional name for the task. Must be unique in the job. This name will be used for OutputVariable names.
     inputs: Optional[Dict[str, Any]] = None
     config: Optional[Dict[str, Any]] = None
 

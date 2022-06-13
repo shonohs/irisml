@@ -2,7 +2,7 @@ import dataclasses
 import sys
 import unittest
 from typing import Dict, List, Optional
-from irisml.core import TaskBase, TaskDescription
+from irisml.core import Context, TaskBase, TaskDescription
 from irisml.core.task import Task
 
 
@@ -51,3 +51,25 @@ class TestTask(unittest.TestCase):
             task = Task(TaskDescription.from_dict({'task': 'custom_task'}))
             with self.assertRaises(RuntimeError):
                 task.load_module()
+
+    def test_inputs_env(self):
+        """Environment variable in inputs should be casted to the expected type."""
+        task_description = TaskDescription.from_dict({'task': 'custom_task', 'inputs': {'input0': '$env.ENV_INPUT'}})
+
+        class CustomTask:
+            class Task(TaskBase):
+                @dataclasses.dataclass
+                class Inputs:
+                    input0: int
+
+                def execute(self, inputs):
+                    if not isinstance(inputs.input0, int):
+                        raise RuntimeError(f"Input type is {type(inputs.input0)}")
+                    return self.Outputs()
+
+        context = Context({'ENV_INPUT': '12345'})
+        with unittest.mock.patch.dict(sys.modules):
+            sys.modules['irisml.tasks.custom_task'] = CustomTask
+            task = Task(task_description)
+            task.load_module()
+            task.execute(context)

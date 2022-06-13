@@ -1,8 +1,8 @@
 import argparse
 import json
-import logging
 import pathlib
 from irisml.core.job_runner import JobRunner
+from irisml.core.commands.common import configure_logger
 
 
 def main():
@@ -20,7 +20,7 @@ def main():
 
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
+    configure_logger(args.verbose)
 
     job_description = json.loads(args.job_filepath.read_text())
     job_runner = JobRunner(job_description, args.env)

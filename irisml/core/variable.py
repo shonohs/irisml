@@ -15,6 +15,9 @@ def replace_variables(value):
 
 
 class Variable:
+    """In a task description, a string with '$' prefix is considered a variable.
+       This class will be used to resolve such variables.
+    """
     def __init__(self, name):
         self._var_str = name
         self._expected_type = str
@@ -38,6 +41,7 @@ class Variable:
 
 
 class EnvironmentVariable(Variable):
+    """A variable with $env prefix"""
     def __init__(self, name):
         super().__init__(name)
         parts = name.split('.')
@@ -47,30 +51,18 @@ class EnvironmentVariable(Variable):
         self._name = parts[1]
 
     def resolve(self, context):
-        if self._name not in context.envs:
-            raise ValueError(f"Environment variable {self._name} is not found.")
-        return self._expected_type(context.envs[self._name])
+        return self._expected_type(context.get_environment_variable(self._name))
 
 
 class OutputVariable(Variable):
+    """A variable with $output prefix. Outputs from a task."""
     def __init__(self, name):
         super().__init__(name)
         parts = name.split('.')
         if len(parts) <= 2 or parts[0] != '$output' or not name.islower():
             raise ValueError(f"Invalid output variable name: {name}")
 
-        self._name = parts[1]
-        self._path = parts[2:]
+        self._name = '.'.join(parts[1:])
 
     def resolve(self, context):
-        if self._name not in context.outputs:
-            raise ValueError(f"Task output {self._name} is not found.")
-
-        value = context.outputs[self._name]
-        for p in self._path:
-            if not hasattr(value, p):
-                return ValueError(f"Variable not found: {self._path}")
-
-            value = getattr(value, p)
-
-        return value
+        return context.get_outputs(self._name)

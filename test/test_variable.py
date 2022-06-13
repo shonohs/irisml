@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import MagicMock
+from irisml.core.context import Context
 from irisml.core.variable import EnvironmentVariable, OutputVariable, replace_variables
 
 
@@ -11,7 +12,7 @@ class TestEnvironmentVariable(unittest.TestCase):
                 EnvironmentVariable(name)
 
     def test_resolve(self):
-        context = MagicMock(envs={'CORRECT_VAR': '42'})
+        context = Context({'CORRECT_VAR': '42'})
         v = EnvironmentVariable('$env.CORRECT_VAR')
         self.assertEqual(v.resolve(context), '42')
         v = EnvironmentVariable('$env.VAR_NOT_FOUND')
@@ -27,7 +28,8 @@ class TestOutputVariable(unittest.TestCase):
                 OutputVariable(name)
 
     def test_resolve(self):
-        context = MagicMock(outputs={'task_name': MagicMock(int_output=42, str_output='42')})
+        context = Context()
+        context.add_outputs('task_name', MagicMock(int_output=42, str_output='42'))
         v = OutputVariable('$output.task_name.int_output')
         self.assertEqual(v.resolve(context), 42)
         v = OutputVariable('$output.task_name.str_output')
