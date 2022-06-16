@@ -1,7 +1,9 @@
 import dataclasses
 import importlib
 import logging
+import random
 import typing
+import torch
 from irisml.core import TaskDescription
 from .task_base import TaskBase
 from .variable import replace_variables, Variable
@@ -34,24 +36,54 @@ class Task:
         return self._task_name
 
     def execute(self, context, dry_run=False):
+        if dry_run:
+            return self.dry_run(context)
+
         if not self._task_class:
             raise RuntimeError("load_module() must be called before executing the task.")
 
         config = self._load_config(self._task_class.Config, self._config_dict)
-        resolved_config = context.resolve(config)
-
         inputs = self._load_inputs(self._task_class.Inputs, self._inputs_dict)
+
+        if self._task_class.CACHE_ENABLED:
+            cached_outputs = context.get_cached_outputs(self._task_name, self._task_class.VERSION, config, inputs, self._task_class.Outputs)
+            if cached_outputs:
+                logger.info(f"Cache is found for {self.name}. Skipping this task.")
+                context.add_outputs(self.name, cached_outputs)
+                return cached_outputs
+
+        resolved_config = context.resolve(config)
+        resolved_inputs = context.resolve(inputs)
+
+        self._reset_random_seed()
+        logger.debug(f"Instantiating the task module. config={resolved_config}")
+        task = self._task_class(resolved_config, context)
+        outputs = task(resolved_inputs)
+        if outputs is None:
+            logger.warning(f"{self} returned None output.")
+            outputs = self._task_class.Outputs()
+
+        if not isinstance(outputs, self._task_class.Outputs):
+            raise RuntimeError(f"Task {self._task_name} returned invalid outputs: {outputs}")
+
+        context.add_outputs(self.name, outputs)
+        if self._task_class.CACHE_ENABLED:
+            context.add_cache_outputs(self._task_name, self._task_class.VERSION, resolved_config, resolved_inputs, outputs)
+        return outputs
+
+    def dry_run(self, context):
+        if not self._task_class:
+            raise RuntimeError("load_module() must be called before executing the task.")
+
+        config = self._load_config(self._task_class.Config, self._config_dict)
+        inputs = self._load_inputs(self._task_class.Inputs, self._inputs_dict)
+
+        resolved_config = context.resolve(config)
         resolved_inputs = context.resolve(inputs)
 
         logger.debug(f"Instantiating the task module. config={resolved_config}")
         task = self._task_class(resolved_config, context)
-        if not dry_run:
-            outputs = task(resolved_inputs)
-            if outputs is None:
-                logger.warning(f"{self} returned None output.")
-                outputs = self._task_class.Outputs()
-        else:
-            outputs = task.dry_run(resolved_inputs)
+        outputs = task.dry_run(resolved_inputs)
 
         if not isinstance(outputs, self._task_class.Outputs):
             raise RuntimeError(f"Task {self._task_name} returned invalid outputs: {outputs}")
@@ -149,6 +181,10 @@ class Task:
                     inputs_dict[field.name].expected_type = field.type
                 c[field.name] = inputs_dict[field.name]
         return inputs_class(**c)
+
+    def _reset_random_seed(self):
+        torch.manual_seed(42)
+        random.seed(42)
 
     def __str__(self):
         return f"Task {self.task_name} (name: {self.name})"

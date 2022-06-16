@@ -32,11 +32,11 @@ LOG_COLORS = {
 }
 
 
-def configure_logger(verbose=False):
+def configure_logger(verbose_level=0):
     """Configure logging handlers. Show logs in color if the stdout is connected to a terminal.
 
        Args:
-           verbose (bool): If true, set log level to DEBUG. Otherwise, log level will be INFO.
+           verbose_level (int): 0: No DEBUG logs. 1: DEBUG logs only from irisml. 2: DEBUG logs from all modules.
     """
     handler = ColoredStreamHandler(colorscheme=LOG_COLORS) if sys.stdout.isatty() else logging.StreamHandler()
 
@@ -44,5 +44,11 @@ def configure_logger(verbose=False):
     handler.setFormatter(formatter)
 
     logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG if verbose else logging.INFO)
+    logger.setLevel(logging.DEBUG if verbose_level >= 2 else logging.INFO)
     logger.addHandler(handler)
+
+    # Suppress noisy logs
+    logging.getLogger('azure.core.pipeline.policies.http_logging_policy').setLevel(logging.WARNING)
+
+    if verbose_level >= 1:
+        logging.getLogger('irisml').setLevel(logging.DEBUG)

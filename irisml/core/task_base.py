@@ -3,7 +3,14 @@ from irisml.core.context import Context
 
 
 class TaskBase:
-    VERSION = '0.0.0'  # Version number of the task. Each task must overwrite this variable.
+    """Base class for Task definition.
+
+    Attributes:
+        VERSION (str): Task must overwrite this atttribute. The format is "(major).(minor).(patch)".
+        CACHE_ENABLED (bool): Set False is Task canno be cached.
+    """
+    VERSION = '0.0.0'
+    CACHE_ENABLED = True
 
     @dataclasses.dataclass(frozen=True)
     class Config:
@@ -12,12 +19,12 @@ class TaskBase:
 
     @dataclasses.dataclass(frozen=True)
     class Inputs:
-        """Inputs type. Must be overwritten if the task requires inputs."""
+        """Inputs type. Must be overwritten if the task requires inputs. Nested dataclass is not allowed."""
         pass
 
     @dataclasses.dataclass(frozen=True)
     class Outputs:
-        """Outputs type. Must be overwritten if the task has outputs."""
+        """Outputs type. Must be overwritten if the task has outputs. Nested dataclass is not allowed."""
         pass
 
     def __init__(self, config: Config, context: Context):
