@@ -1,0 +1,40 @@
+name: Generate and publish documents
+
+on:
+  push:
+    branches: [ master ]
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.8
+      - name: Install the package and dependencies
+        run: python -m pip install -U pip && pip install pdoc && pip install -e .
+      - name: Build documents
+        run: pdoc -o pdocs/ irisml.core
+      - name: create a package
+        run: tar --directory pdocs/ -hcf artifact.tar .
+      - name: Upload the artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: github-pages
+          path: ./artifact.tar
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outptus.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v1
