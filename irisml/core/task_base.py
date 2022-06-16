@@ -39,13 +39,13 @@ class TaskBase:
     def context(self):
         return self._context
 
-    def __call__(self, inputs: Inputs) -> Outputs:
-        return self.execute(inputs)
-
     def execute(self, inputs: Inputs) -> Outputs:
         """This method must be overwritten by the task."""
         raise NotImplementedError
 
     def dry_run(self, inputs: Inputs) -> Outputs:
-        """This method will be called in dry-run mode. Task can overwrite this method."""
+        """This method will be called in dry-run mode. Task can overwrite this method.
+
+        This method must return immediately.
+        """
         return self.Outputs()

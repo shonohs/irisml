@@ -40,7 +40,7 @@ def configure_logger(verbose_level=0):
     """
     handler = ColoredStreamHandler(colorscheme=LOG_COLORS) if sys.stdout.isatty() else logging.StreamHandler()
 
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(name)s %(message)s')
+    formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s (%(name)s)')
     handler.setFormatter(formatter)
 
     logger = logging.getLogger()

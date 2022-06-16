@@ -2,7 +2,7 @@ import copy
 import dataclasses
 import logging
 import typing
-from .cache_manager import CachedOutputs, HashGenerator
+from .cache_manager import CachedOutputs
 from .variable import Variable
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,12 @@ class Context:
         self._outputs[name] = outputs
 
     def get_outputs(self, output_name: str):
+        """Get the outputs of previous tasks.
+        Args:
+            name (str): the name of the task
+        Returns:
+            Outputs dataclass. If the task had been skipped, returns CachedOutputs.
+        """
         if output_name not in self._outputs:
             raise ValueError(f"Output {output_name} is not found.")
         return self._outputs[output_name]
@@ -58,7 +64,7 @@ class Context:
         else:
             return value
 
-    def get_cached_outputs(self, task_name, task_version, config, inputs, outputs_class: dataclasses.dataclass) -> typing.Optional[CachedOutputs]:
+    def get_cached_outputs(self, task_name, task_version, task_hash: str, outputs_class: dataclasses.dataclass) -> typing.Optional[CachedOutputs]:
         """Try to get cached outputs for the given task
 
         Args:
@@ -73,13 +79,12 @@ class Context:
         if not self._cache_manager:
             return None
 
-        task_hash = HashGenerator.calculate_hash([config, inputs], self)
         logger.debug(f"Trying to get cache for Task {task_name} version {task_version}. Hash: {task_hash}")
         return self._cache_manager.get_cache(task_name, task_version, task_hash, outputs_class)
 
-    def add_cache_outputs(self, task_name, task_version, config, inputs, outputs):
+    def add_cache_outputs(self, task_name, task_version, task_hash: str, outputs):
+        """Save the task outputs to the cache storage."""
         if self._cache_manager:
-            task_hash = HashGenerator.calculate_hash([config, inputs], self)
             logger.debug(f"Uploading cache for Task {task_name} version {task_version}. Hash: {task_hash}")
             self._cache_manager.upload_cache(task_name, task_version, task_hash, outputs)
 

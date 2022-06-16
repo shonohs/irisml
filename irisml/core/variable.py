@@ -2,6 +2,7 @@ from .cache_manager import CachedOutputs, HashGenerator
 
 
 def replace_variables(value):
+    """Replace a string '$env' and '$outputs' in the given object with Variable instances."""
     if isinstance(value, dict):
         return {k: replace_variables(v) for k, v in value.items()}
     elif isinstance(value, list):
@@ -43,6 +44,7 @@ class Variable:
         return hash(self._var_str)
 
     def resolve(self, context):
+        """Returns the actual value this variable represents."""
         raise NotImplementedError
 
     def get_hash(self, context):

@@ -5,6 +5,7 @@ from irisml.core.task import Task
 
 
 def main():
+    """TODO This method is WIP."""
     configure_logger()
     parser = argparse.ArgumentParser(description="Run a single task")
     parser.add_argument('task_name')

@@ -5,6 +5,7 @@ import random
 import typing
 import torch
 from irisml.core import TaskDescription
+from .hash_generator import HashGenerator
 from .task_base import TaskBase
 from .variable import replace_variables, Variable
 
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class Task:
-    """Represents a task description. It doesn't require actual task modules until load_module() is called."""
+    """Represents a task. It doesn't require actual task modules until load_module() is called."""
     def __init__(self, description: TaskDescription):
         assert description.task.islower()
 
@@ -45,20 +46,28 @@ class Task:
         config = self._load_config(self._task_class.Config, self._config_dict)
         inputs = self._load_inputs(self._task_class.Inputs, self._inputs_dict)
 
+        task_hash = HashGenerator.calculate_hash([config, inputs], context)
         if self._task_class.CACHE_ENABLED:
-            cached_outputs = context.get_cached_outputs(self._task_name, self._task_class.VERSION, config, inputs, self._task_class.Outputs)
+            cached_outputs = context.get_cached_outputs(self._task_name, self._task_class.VERSION, task_hash, self._task_class.Outputs)
             if cached_outputs:
-                logger.info(f"Cache is found for {self.name}. Skipping this task.")
+                logger.info(f"[{self._task_name}]: Found cached outputs. Skipping the task.")
                 context.add_outputs(self.name, cached_outputs)
                 return cached_outputs
 
+        logger.info(f"[{self._task_name}]: Running the task.")
         resolved_config = context.resolve(config)
         resolved_inputs = context.resolve(inputs)
+
+        if self._task_class.CACHE_ENABLED:
+            if HashGenerator.calculate_hash(config, context) != HashGenerator.calculate_hash(resolved_config):
+                logger.error("Resolved config has different hash.")
+            if HashGenerator.calculate_hash(inputs, context) != HashGenerator.calculate_hash(resolved_inputs):
+                logger.error("Resolved inputs has different hash.")
 
         self._reset_random_seed()
         logger.debug(f"Instantiating the task module. config={resolved_config}")
         task = self._task_class(resolved_config, context)
-        outputs = task(resolved_inputs)
+        outputs = task.execute(resolved_inputs)
         if outputs is None:
             logger.warning(f"{self} returned None output.")
             outputs = self._task_class.Outputs()
@@ -68,10 +77,11 @@ class Task:
 
         context.add_outputs(self.name, outputs)
         if self._task_class.CACHE_ENABLED:
-            context.add_cache_outputs(self._task_name, self._task_class.VERSION, resolved_config, resolved_inputs, outputs)
+            context.add_cache_outputs(self._task_name, self._task_class.VERSION, task_hash, outputs)
         return outputs
 
     def dry_run(self, context):
+        """Dry run the task. Task can define its own dry_run() method."""
         if not self._task_class:
             raise RuntimeError("load_module() must be called before executing the task.")
 
@@ -183,6 +193,10 @@ class Task:
         return inputs_class(**c)
 
     def _reset_random_seed(self):
+        """Reset the random seed.
+
+        To make sure the tasks are deterministic, we reset the random seed every time a task starts.
+        """
         torch.manual_seed(42)
         random.seed(42)
 
